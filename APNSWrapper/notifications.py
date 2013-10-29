@@ -189,7 +189,7 @@ class APNSNotificationWrapper(object):
 
         self.connection.connect(apnsHost, self.apnsPort)
 
-    def discounnect(self):
+    def disconnect(self):
         """Close connection ton APNS server"""
         self.connection.close()
 
