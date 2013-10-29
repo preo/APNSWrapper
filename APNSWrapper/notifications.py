@@ -10,20 +10,36 @@
 # limitations under the License.
 
 
+__all__ = ['APNSAlert', 'APNSNotificationWrapper', 'APNSNotification']
+
 import struct
 import base64
 import binascii
+import datetime
+import decimal
+try:
+    import simplejson as json
+except ImportError:
+    import json
 
-from __init__ import *
-from connection import *
-from apnsexceptions import *
-from utils import _doublequote
-
-NULL = 'null'
+from .connection import APNSConnection
+from .apnsexceptions import (APNSValueError, APNSTypeError,
+                             APNSUndefinedDeviceToken, APNSPayloadLengthError)
 
 
-__all__ = ('APNSAlert', 'APNSProperty', 'APNSNotificationWrapper', \
-           'APNSNotification')
+class Encoder(json.JSONEncoder):
+    def default(self, o):
+        if isinstance(o, datetime.datetime) or isinstance(o, datetime.date):
+            return o.isoformat()
+        if isinstance(o, decimal.Decimal):
+            return float(o)
+        if isinstance(o, APNSAlert):
+            return o.__json__()
+        return json.JSONEncoder.default(self, o)
+
+
+def encode(object):
+    return Encoder(indent=None, separators=(',', ':')).encode(object)
 
 
 class APNSAlert(object):
@@ -42,19 +58,19 @@ class APNSAlert(object):
         The text of the alert message.
         """
         if alertBody and not isinstance(alertBody, basestring):
-            raise APNSValueError("Unexpected value of argument. "\
-                                    "It should be string or None.")
+            raise APNSValueError("Unexpected value of argument. "
+                                 "It should be string or None.")
 
         self.alertBody = alertBody
         return self
 
-    def action_loc_key(self, alk=NULL):
+    def action_loc_key(self, alk=None):
         """
         If a string is specified, displays an alert with two buttons.
         """
         if alk and not isinstance(alk, basestring):
-            raise APNSValueError("Unexpected value of argument. "\
-                                    "It should be string or None.")
+            raise APNSValueError("Unexpected value of argument. "
+                                 "It should be string or None.")
 
         self.actionLocKey = alk
         return self
@@ -66,8 +82,8 @@ class APNSAlert(object):
         localization (which is set by the user's language preference).
         """
         if lk and not isinstance(lk, basestring):
-            raise APNSValueError("Unexcpected value of argument. "\
-                                        "It should be string or None")
+            raise APNSValueError("Unexpected value of argument. "
+                                 "It should be string or None")
         self.locKey = lk
         return self
 
@@ -78,70 +94,32 @@ class APNSAlert(object):
         """
 
         if la and not isinstance(la, (list, tuple)):
-            raise APNSValueError("Unexpected type of argument. "\
-                                    "It should be list or tuple of strings")
+            raise APNSValueError("Unexpected type of argument. "
+                                 "It should be list or tuple of strings")
 
-        self.locArgs = [u'"%s"' % unicode(x) for x in la]
+        self.locArgs = [unicode(x) for x in la]
         return self
 
-    def build(self):
+    def __json__(self):
         """
         Build object to JSON Apple Push Notification Service string.
         """
 
-        arguments = []
-        if self.alertBody:
-            arguments.append(u'"body":"%s"' % _doublequote(self.alertBody))
+        attr_map = {
+            u'body': 'alertBody',
+            u'action-loc-key': 'actionLocKey',
+            u'loc-key': 'locKey',
+            u'loc-args': 'locArgs',
+        }
+        data = {}
+        for k, a in attr_map.iteritems():
+            v = getattr(self, a, None)
+            if v:
+                data[k] = v
+        return data
 
-        if self.actionLocKey:
-            arguments.append(u'"action-loc-key":"%s"' % _doublequote(\
-                                                         self.actionLocKey))
-
-        if self.locKey:
-            arguments.append(u'"loc-key":"%s"' % _doublequote(self.locKey))
-
-        if self.locArgs:
-            arguments.append(u'"loc-args":[%s]' % u",".join(self.locArgs))
-
-        return u",".join(arguments)
-
-
-class APNSProperty(object):
-    """
-    This class should describe APNS arguments.
-    """
-    name = None
-    data = None
-
-    def __init__(self, name=None, data=None):
-        if not name or not isinstance(name, basestring) or len(name) == 0:
-            raise APNSValueError("Name of property argument "\
-                                    "should be a non-empty string")
-
-        if not isinstance(data, (int, basestring, list, tuple, float)):
-            raise APNSValueError("Data argument should be string, "\
-                                                "number, list of tuple")
-
-        self.name = name
-        self.data = data
-
-    def build(self):
-        """Build property for payload"""
-        arguments = []
-        name = u'"%s":' % self.name
-
-        if isinstance(self.data, (int, float)):
-            return u"%s%s" % (name, unicode(self.data))
-
-        if isinstance(self.data, basestring):
-            return u'%s"%s"' % (name, _doublequote(self.data))
-
-        if isinstance(self.data, (tuple, list)):
-            arguments = map(lambda x: if_else(isinstance(x, unicode), \
-                            u'"%s"' % _doublequote(unicode(x)), unicode(x)), self.data)
-            return u"%s[%s]" % (name, u",".join(arguments))
-
-        return u'%s%s' % (name, NULL)
+    def __str__(self):
+        return encode(self.__json__())
 
 
 class APNSNotificationWrapper(object):
@@ -158,19 +136,19 @@ class APNSNotificationWrapper(object):
     connection = None
     debug_ssl = False
 
-    def __init__(self, certificate=None, sandbox=True, debug_ssl=False, \
-                    force_ssl_command=False):
+    def __init__(self, certificate=None, sandbox=True, debug_ssl=False,
+                 force_ssl_command=False):
         self.debug_ssl = debug_ssl
-        self.connection = APNSConnection(certificate=certificate, \
-                            force_ssl_command=force_ssl_command, \
-                            debug=self.debug_ssl)
+        self.connection = APNSConnection(certificate=certificate,
+                                         force_ssl_command=force_ssl_command,
+                                         debug=self.debug_ssl)
         self.sandbox = sandbox
         self.payloads = []
 
     def append(self, payload=None):
         """Append payload to wrapper"""
         if not isinstance(payload, APNSNotification):
-            raise APNSTypeError("Unexpected argument type. Argument should "\
+            raise APNSTypeError("Unexpected argument type. Argument should "
                                 "be an instance of APNSNotification object")
         self.payloads.append(payload)
 
@@ -182,11 +160,7 @@ class APNSNotificationWrapper(object):
     def connect(self):
         """Make connection to APNS server"""
 
-        if self.sandbox != True:
-            apnsHost = self.apnsHost
-        else:
-            apnsHost = self.apnsSandboxHost
-
+        apnsHost = self.apnsSandboxHost if self.sandbox else self.apnsHost
         self.connection.connect(apnsHost, self.apnsPort)
 
     def disconnect(self):
@@ -200,14 +174,12 @@ class APNSNotificationWrapper(object):
             2) send notification
         """
         payloads = [o.payload() for o in self.payloads]
-        messages = []
-
-        if len(payloads) == 0:
+        if not payloads:
             return False
 
+        messages = []
         for p in payloads:
-            plen = len(p)
-            messages.append(struct.pack('%ds' % plen, p))
+            messages.append(struct.pack('%ds' % len(p), p))
 
         message = "".join(messages)
         self.connection.write(message)
@@ -237,7 +209,7 @@ class APNSNotification(object):
         """
         Initialization of the APNSNotificationWrapper object.
         """
-        self.properties = []
+        self.properties = {}
         self.badgeValue = None
         self.soundValue = None
         self.alertObject = None
@@ -262,8 +234,11 @@ class APNSNotification(object):
         Add deviceToken as a hexToken
         Strips out whitespace and <>
         """
-        hexToken = hexToken.strip().strip(\
-                    '<>').replace(' ', '').replace('-', '')
+        hexToken = (hexToken
+                    .strip()
+                    .strip('<>')
+                    .replace(' ', '')
+                    .replace('-', ''))
         self.deviceToken = binascii.unhexlify(hexToken)
 
         return self
@@ -280,7 +255,7 @@ class APNSNotification(object):
         None (by default it is None)
         badge will be disabled.
         """
-        if num == None:
+        if num is None:
             self.badgeValue = None
             return self
 
@@ -291,10 +266,10 @@ class APNSNotification(object):
 
     def sound(self, sound='default'):
         """
-        Add a custom sound to the noficitaion.
+        Add a custom sound to the notification.
         By defailt it is default sound ('default')
         """
-        if sound == None:
+        if sound is None:
             self.soundValue = None
             return self
         self.soundValue = unicode(sound)
@@ -305,86 +280,63 @@ class APNSNotification(object):
         Add an alert to the Wrapper. It should be string or
         APNSAlert object instance.
         """
-        if not isinstance(alert, unicode) and \
-            not isinstance(alert, APNSAlert):
-            raise APNSTypeError("Wrong type of alert argument. Argument s"\
-                                "hould be String, Unicode string or an "\
+        if not isinstance(alert, (unicode, APNSAlert)):
+            raise APNSTypeError("Wrong type of alert argument. Argument "
+                                "should be String, Unicode string or an "
                                 "instance of APNSAlert object")
         self.alertObject = alert
         return self
 
-    def appendProperty(self, *args):
+    def setProperty(self, key, value):
         """
         Add a custom property to list of properties.
         """
-        for prop in args:
-            if not isinstance(prop, APNSProperty):
-                raise APNSTypeError("Wrong type of argument. Argument should"\
-                                    " be an instance of APNSProperty object")
-            self.properties.append(prop)
+        self.properties[key] = value
         return self
 
     def clearProperties(self):
         """
         Clear list of properties.
         """
-        self.properties = None
+        self.properties = {}
 
-    def build(self):
+    def __json__(self):
         """
         Build all notifications items to one string.
         """
-        keys = []
-        apsKeys = []
+        data = {'aps': {}}
+        data.update(self.properties)
         if self.soundValue:
-            apsKeys.append(u'"sound":"%s"' % _doublequote(self.soundValue))
+            data['aps']['sound'] = self.soundValue
 
         if self.badgeValue:
-            apsKeys.append(u'"badge":%d' % int(self.badgeValue))
+            data['aps']['badge'] = self.badgeValue
 
-        if self.alertObject != None:
-            alertArgument = ""
-            if isinstance(self.alertObject, basestring):
-                alertArgument = _doublequote(self.alertObject)
-                apsKeys.append(u'"alert":"%s"' % alertArgument)
-            elif isinstance(self.alertObject, APNSAlert):
-                alertArgument = self.alertObject.build()
-                apsKeys.append(u'"alert":{%s}' % alertArgument)
+        if self.alertObject:
+            data['aps']['alert'] = self.alertObject
 
-        keys.append(u'"aps":{%s}' % u",".join(apsKeys))
+        return data
 
-        # prepare properties
-        for property in self.properties:
-            keys.append(property.build())
-
-        payload = u"{%s}" % u",".join(keys)
-
-        if len(payload) > self.maxPayloadLength:
-            raise APNSPayloadLengthError("Length of Payload more "\
-                                    "than %d bytes." % self.maxPayloadLength)
-
-        return payload
+    def __str__(self):
+        return encode(self.__json__())
 
     def payload(self):
         """Build payload via struct module"""
-        if self.deviceToken == None:
-            raise APNSUndefinedDeviceToken("You forget to set deviceToken "\
-                                            "in your notification.")
+        if not self.deviceToken:
+            raise APNSUndefinedDeviceToken("You forgot to set deviceToken "
+                                           "in your notification.")
 
-        payload = self.build()
-        payloadLength = len(payload)
-        tokenLength = len(self.deviceToken)
-        # Below not used at the moment
-        # tokenFormat = "s" * tokenLength
-        # payloadFormat = "s" * payloadLength
+        payload = str(self)
+        if len(payload) > self.maxPayloadLength:
+            raise APNSPayloadLengthError("Length of Payload more than "
+                                         "%d bytes." % self.maxPayloadLength)
 
-        apnsPackFormat = "!BH" + str(tokenLength) + "sH" + \
-                                            str(payloadLength) + "s"
+        apnsPackFormat = "!BH{0}sH{1}s".format(len(self.deviceToken),
+                                               len(payload))
 
-        # build notification message in binary format
         return struct.pack(apnsPackFormat,
-                                    self.command,
-                                    tokenLength,
-                                    self.deviceToken,
-                                    payloadLength,
-                                    payload)
+                           self.command,
+                           len(self.deviceToken),
+                           self.deviceToken,
+                           len(payload),
+                           payload)

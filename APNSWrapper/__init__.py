@@ -10,8 +10,7 @@
 # limitations under the License.
 
 
-from utils import _doublequote, if_else, find_executable
-from apnsexceptions import *
-from connection import *
-from notifications import *
-from feedback import *
+from .apnsexceptions import *
+from .connection import *
+from .notifications import *
+from .feedback import *

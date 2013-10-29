@@ -18,7 +18,7 @@ def badge(wrapper, token):
     message.tokenBase64(token)
 
     message.badge(3)
-    print message.build()
+    print message
     wrapper.append(message)
 
 
@@ -27,7 +27,7 @@ def sound(wrapper, token):
     message.tokenBase64(token)
 
     message.sound("default")
-    print message.build()
+    print message
     wrapper.append(message)
 
 
@@ -46,10 +46,9 @@ def alert(wrapper, token):
     message.alert(alert)
 
     # properties wrapper
-    property = APNSProperty("acme", (1, "custom string argument"))
-    message.appendProperty(property)
+    message.setProperty("acme", (1, "custom string argument"))
 
-    print message.build()
+    print message
     wrapper.append(message)
 
 

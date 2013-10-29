@@ -10,26 +10,10 @@
 # limitations under the License.
 
 
+__all__ = ['find_executable']
+
 import os
 import sys
-
-
-def _doublequote(str):
-    """
-    Replace double quotes if it's necessary
-    """
-    return str.replace('"', '\\"')
-
-
-def if_else(condition, a, b):
-    """
-    It's helper for lambda functions.
-    """
-
-    if condition:
-        return a
-
-    return b
 
 
 def find_executable(executable, path=None):
