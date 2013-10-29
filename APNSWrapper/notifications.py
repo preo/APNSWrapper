@@ -116,7 +116,7 @@ class APNSProperty(object):
     def __init__(self, name=None, data=None):
         if not name or not isinstance(name, str) or len(name) == 0:
             raise APNSValueError("Name of property argument "\
-                                    "should be a non-empry string")
+                                    "should be a non-empty string")
 
         if not isinstance(data, (int, str, list, tuple, float)):
             raise APNSValueError("Data argument should be string, "\
