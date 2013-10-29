@@ -41,7 +41,7 @@ class APNSAlert(object):
         """
         The text of the alert message.
         """
-        if alertBody and not isinstance(alertBody, str):
+        if alertBody and not isinstance(alertBody, basestring):
             raise APNSValueError("Unexpected value of argument. "\
                                     "It should be string or None.")
 
@@ -52,7 +52,7 @@ class APNSAlert(object):
         """
         If a string is specified, displays an alert with two buttons.
         """
-        if alk and not isinstance(alk, str):
+        if alk and not isinstance(alk, basestring):
             raise APNSValueError("Unexpected value of argument. "\
                                     "It should be string or None.")
 
@@ -65,7 +65,7 @@ class APNSAlert(object):
         Localizable.strings file for the current
         localization (which is set by the user's language preference).
         """
-        if lk and not isinstance(lk, str):
+        if lk and not isinstance(lk, basestring):
             raise APNSValueError("Unexcpected value of argument. "\
                                         "It should be string or None")
         self.locKey = lk
@@ -81,7 +81,7 @@ class APNSAlert(object):
             raise APNSValueError("Unexpected type of argument. "\
                                     "It should be list or tuple of strings")
 
-        self.locArgs = ['"%s"' % str(x) for x in la]
+        self.locArgs = [u'"%s"' % unicode(x) for x in la]
         return self
 
     def build(self):
@@ -91,19 +91,19 @@ class APNSAlert(object):
 
         arguments = []
         if self.alertBody:
-            arguments.append('"body":"%s"' % _doublequote(self.alertBody))
+            arguments.append(u'"body":"%s"' % _doublequote(self.alertBody))
 
         if self.actionLocKey:
-            arguments.append('"action-loc-key":"%s"' % _doublequote(\
-                                                        self.actionLocKey))
+            arguments.append(u'"action-loc-key":"%s"' % _doublequote(\
+                                                         self.actionLocKey))
 
         if self.locKey:
-            arguments.append('"loc-key":"%s"' % _doublequote(self.locKey))
+            arguments.append(u'"loc-key":"%s"' % _doublequote(self.locKey))
 
         if self.locArgs:
-            arguments.append('"loc-args":[%s]' % ",".join(self.locArgs))
+            arguments.append(u'"loc-args":[%s]' % u",".join(self.locArgs))
 
-        return ",".join(arguments)
+        return u",".join(arguments)
 
 
 class APNSProperty(object):
@@ -114,11 +114,11 @@ class APNSProperty(object):
     data = None
 
     def __init__(self, name=None, data=None):
-        if not name or not isinstance(name, str) or len(name) == 0:
+        if not name or not isinstance(name, basestring) or len(name) == 0:
             raise APNSValueError("Name of property argument "\
                                     "should be a non-empty string")
 
-        if not isinstance(data, (int, str, list, tuple, float)):
+        if not isinstance(data, (int, basestring, list, tuple, float)):
             raise APNSValueError("Data argument should be string, "\
                                                 "number, list of tuple")
 
@@ -128,20 +128,20 @@ class APNSProperty(object):
     def build(self):
         """Build property for payload"""
         arguments = []
-        name = '"%s":' % self.name
+        name = u'"%s":' % self.name
 
         if isinstance(self.data, (int, float)):
-            return "%s%s" % (name, str(self.data))
+            return u"%s%s" % (name, unicode(self.data))
 
-        if isinstance(self.data, str) or isinstance(self.data, unicode):
-            return '%s"%s"' % (name, _doublequote(self.data))
+        if isinstance(self.data, basestring):
+            return u'%s"%s"' % (name, _doublequote(self.data))
 
         if isinstance(self.data, (tuple, list)):
-            arguments = map(lambda x: if_else(isinstance(x, str), \
-                            '"%s"' % _doublequote(str(x)), str(x)), self.data)
-            return "%s[%s]" % (name, ",".join(arguments))
+            arguments = map(lambda x: if_else(isinstance(x, unicode), \
+                            u'"%s"' % _doublequote(unicode(x)), unicode(x)), self.data)
+            return u"%s[%s]" % (name, u",".join(arguments))
 
-        return '%s%s' % (name, NULL)
+        return u'%s%s' % (name, NULL)
 
 
 class APNSNotificationWrapper(object):
@@ -297,7 +297,7 @@ class APNSNotification(object):
         if sound == None:
             self.soundValue = None
             return self
-        self.soundValue = str(sound)
+        self.soundValue = unicode(sound)
         return self
 
     def alert(self, alert=None):
@@ -305,7 +305,7 @@ class APNSNotification(object):
         Add an alert to the Wrapper. It should be string or
         APNSAlert object instance.
         """
-        if not isinstance(alert, str) and not isinstance(alert, unicode) and \
+        if not isinstance(alert, unicode) and \
             not isinstance(alert, APNSAlert):
             raise APNSTypeError("Wrong type of alert argument. Argument s"\
                                 "hould be String, Unicode string or an "\
@@ -337,27 +337,27 @@ class APNSNotification(object):
         keys = []
         apsKeys = []
         if self.soundValue:
-            apsKeys.append('"sound":"%s"' % _doublequote(self.soundValue))
+            apsKeys.append(u'"sound":"%s"' % _doublequote(self.soundValue))
 
         if self.badgeValue:
-            apsKeys.append('"badge":%d' % int(self.badgeValue))
+            apsKeys.append(u'"badge":%d' % int(self.badgeValue))
 
         if self.alertObject != None:
             alertArgument = ""
-            if isinstance(self.alertObject, str):
+            if isinstance(self.alertObject, basestring):
                 alertArgument = _doublequote(self.alertObject)
-                apsKeys.append('"alert":"%s"' % alertArgument)
+                apsKeys.append(u'"alert":"%s"' % alertArgument)
             elif isinstance(self.alertObject, APNSAlert):
                 alertArgument = self.alertObject.build()
-                apsKeys.append('"alert":{%s}' % alertArgument)
+                apsKeys.append(u'"alert":{%s}' % alertArgument)
 
-        keys.append('"aps":{%s}' % ",".join(apsKeys))
+        keys.append(u'"aps":{%s}' % u",".join(apsKeys))
 
         # prepare properties
         for property in self.properties:
             keys.append(property.build())
 
-        payload = "{%s}" % ",".join(keys)
+        payload = u"{%s}" % u",".join(keys)
 
         if len(payload) > self.maxPayloadLength:
             raise APNSPayloadLengthError("Length of Payload more "\
