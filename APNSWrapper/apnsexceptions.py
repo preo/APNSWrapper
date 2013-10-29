@@ -10,10 +10,10 @@
 # limitations under the License.
 
 
-__all__ = ('APNSNotImplementedMethod', 'APNSNoSSLContextFound', \
-           'APNSNoCommandFound', 'APNSTypeError', 'APNSPayloadLengthError', \
-           'APNSCertificateNotFoundError', 'APNSValueError', \
-           'APNSUndefinedDeviceToken', 'APNSConnectionError')
+__all__ = ['APNSNotImplementedMethod', 'APNSNoSSLContextFound',
+           'APNSNoCommandFound', 'APNSTypeError', 'APNSPayloadLengthError',
+           'APNSCertificateNotFoundError', 'APNSValueError',
+           'APNSUndefinedDeviceToken', 'APNSConnectionError']
 
 
 class APNSNotImplementedMethod(Exception):
