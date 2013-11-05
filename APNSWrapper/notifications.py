@@ -197,9 +197,9 @@ class APNSNotification(object):
     """
 
     command = 0
-    badge = None
-    sound = None
-    alert = None
+    badgeValue = None
+    soundValue = None
+    alertObject = None
 
     deviceToken = None
 
