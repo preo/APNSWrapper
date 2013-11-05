@@ -27,7 +27,7 @@ from .apnsexceptions import (APNSValueError, APNSTypeError,
                              APNSUndefinedDeviceToken, APNSPayloadLengthError)
 
 
-class Encoder(json.JSONEncoder):
+class JSONEncoder(json.JSONEncoder):
     def default(self, o):
         if isinstance(o, datetime.datetime) or isinstance(o, datetime.date):
             return o.isoformat()
@@ -38,8 +38,8 @@ class Encoder(json.JSONEncoder):
         return json.JSONEncoder.default(self, o)
 
 
-def encode(object):
-    return Encoder(indent=None, separators=(',', ':')).encode(object)
+def encode_json(data):
+    return JSONEncoder(indent=None, separators=(',', ':')).encode(data)
 
 
 class APNSAlert(object):
@@ -118,8 +118,11 @@ class APNSAlert(object):
                 data[k] = v
         return data
 
+    def __unicode__(self):
+        return encode_json(self.__json__())
+
     def __str__(self):
-        return encode(self.__json__())
+        return unicode(self).encode('utf-8')
 
 
 class APNSNotificationWrapper(object):
@@ -317,8 +320,11 @@ class APNSNotification(object):
 
         return data
 
+    def __unicode__(self):
+        return encode_json(self.__json__())
+
     def __str__(self):
-        return encode(self.__json__())
+        return unicode(self).encode('utf-8')
 
     def payload(self):
         """Build payload via struct module"""
