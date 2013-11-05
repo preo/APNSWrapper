@@ -33,7 +33,7 @@ class Encoder(json.JSONEncoder):
             return o.isoformat()
         if isinstance(o, decimal.Decimal):
             return float(o)
-        if isinstance(o, APNSAlert):
+        if hasattr(o, '__json__'):
             return o.__json__()
         return json.JSONEncoder.default(self, o)
 
