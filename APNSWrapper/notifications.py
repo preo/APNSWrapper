@@ -283,7 +283,7 @@ class APNSNotification(object):
         Add an alert to the Wrapper. It should be string or
         APNSAlert object instance.
         """
-        if not isinstance(alert, (unicode, APNSAlert)):
+        if not isinstance(alert, (basestring, APNSAlert)):
             raise APNSTypeError("Wrong type of alert argument. Argument "
                                 "should be String, Unicode string or an "
                                 "instance of APNSAlert object")
