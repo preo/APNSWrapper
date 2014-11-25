@@ -18,7 +18,7 @@ import subprocess
 
 from apnsexceptions import (APNSNotImplementedMethod, APNSNoCommandFound,
                             APNSCertificateNotFoundError,
-                            APNSNoSSLContextFound)
+                            APNSNoSSLContextFound, APNSConnectionError)
 from utils import find_executable
 
 
@@ -85,33 +85,40 @@ class OpenSSLCommandLine(APNSConnectionContext):
             stderr=subprocess.PIPE)
 
     def write(self, data=None):
-        pipe = self.run_command()
+        process = self.run_command()
 
-        std_in = pipe.stdin
+        std_in = process.stdin
         std_in.write(data)
         std_in.flush()
         std_in.close()
 
-        std_out = pipe.stdout
+        stdout = process.stdout.read()
+        stderr = process.stderr.read()
         if self.debug:
             print "-------------- SSL Debug Output --------------"
             print self.command()
             print "----------------------------------------------"
-            print std_out.read()
-            std_out.close()
-        pipe.wait()
+            print stdout
+        process.wait()
+        if process.returncode != 0:
+            raise APNSConnectionError(
+                'Error running SSL command.\n'
+                ('Original command: %s\n' % self.command)
+                ('Returned exit code %d\n' % process.returncode)
+                ('With the following stderr:\n%s' % stderr)
+                ('With the following stdout:\n%s' % stdout))
 
     def read(self, blockSize=1024):
         """
         There is method to read data from feedback service.
         WARNING! It's not tested and doesn't work yet!
         """
-        pipe = self.run_command()
-        std_out = pipe.stdout
+        process = self.run_command()
+        std_out = process.stdout
 
         data = std_out.read()
 
-        #pipe.wait()
+        # process.wait()
         std_out.close()
         return data
 
