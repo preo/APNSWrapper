@@ -67,7 +67,7 @@ class OpenSSLCommandLine(APNSConnectionContext):
         self.port = port
 
     def command(self):
-        return ("%(executable)s s_client -ssl3 -cert "
+        return ("%(executable)s s_client -cert "
                 "%(cert)s -connect %(host)s:%(port)s" % {
                     'executable': self.executable,
                     'cert': self.certificate,
